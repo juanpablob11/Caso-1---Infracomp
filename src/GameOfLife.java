@@ -27,21 +27,37 @@ public class GameOfLife {
         "Enter the size of matrix to simulate: ");
         int size = scanner.nextInt();
 
+        Board gameBoard = new Board(size, generations);
+
         scanner.nextLine(); // Consume the remaining line
         
         System.out.println("\n" +
         "Enter the name of the file with the initial state: ");
         String fileName = scanner.nextLine();
         
-        Cell[][] board = loadInitialState(fileName, size);
-        
-        // More logic to come
+        Cell[][] initialBoard = loadInitialState(fileName, size, gameBoard);
         
         scanner.close();
+
+        for(int i = 0; i < 30; i++) {
+            System.out.print("-");
+        }
+
+        System.out.println("\n" +
+            "The initial board is: ");
+
+        for(int i = 0; i < 30; i++) {
+            System.out.print("-");
+        }
+
+        System.out.println("\n" +
+            "The final board after "+ generations + " generations is: ");
+        
+        gameBoard.runSimulation(generations);
+        
     }
     
-    private static Cell[][] loadInitialState(String fileName, int size) {
-        Board gameBoard = new Board(size);
+    private static Cell[][] loadInitialState(String fileName, int size, Board gameBoard) {
         gameBoard.setBoardCell(gameBoard.initializeCells(fileName));
         return gameBoard.getBoardCell();
     }    

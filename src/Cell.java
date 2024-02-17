@@ -1,8 +1,8 @@
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 
 public class Cell implements Runnable {
 
@@ -13,19 +13,32 @@ public class Cell implements Runnable {
     It communicates its status to neighboring cells and receives their status to
     determine your next state.*/
 
+    public List<Cell> getNeighbors() {
+        return neighbors;
+    }
+
+    public void setNeighbors(List<Cell> neighbors) {
+        this.neighbors = neighbors;
+    }
+
     // Attributes
     private Boolean currentState;
     private Integer column, row;
     private Buffer mailbox;
     private List<Cell> neighbors;
     private List<Boolean> neighborsState;
+    private CyclicBarrier barrierForMessages;
+    private CyclicBarrier barrierForUpdating;
     
     // Constructor
-    public Cell(boolean initialState, Integer column, Integer row) {
+    public Cell(boolean initialState, Integer column, Integer row, CyclicBarrier barrierForMessages,
+    CyclicBarrier barrierForUpdating) {
         this.currentState = initialState;
         this.mailbox = new Buffer(row + 1);
         this.column = column;
         this.row = row;
+        this.barrierForMessages = barrierForMessages;
+        this.barrierForUpdating = barrierForUpdating;
     }
 
     @Override
@@ -33,6 +46,21 @@ public class Cell implements Runnable {
         // Simulate the cell's life cycle based on the game rules (birth, live, die)
         // This will involve receiving state information from neighboring cells through the mailbox
         // and updating its state accordingly
+
+        try {
+            // Phase 1: Send status to neighbors
+            sendStateToNeighbors();
+            barrierForMessages.await(); // Wait until all cells have sent their status
+            
+            // Phase 2: Receive states and calculate the new state
+            receiveStateFromNeighbors();
+            calculateNextState();
+            barrierForUpdating.await(); //Wait until all cells have been updated
+
+        } catch (InterruptedException | BrokenBarrierException e) {
+            Thread.currentThread().interrupt();
+            e.printStackTrace();
+        }
     }
     
     public void sendStateToNeighbors() {
@@ -91,12 +119,12 @@ public class Cell implements Runnable {
 
     public synchronized Boolean consume() throws InterruptedException {
         while (queue.isEmpty()) {
-            wait(); // Espera si el buffer está vacío
+            Thread.yield(); // Instead of wait(), for semi-active wait
         }
-        Boolean value = queue.poll(); // Remueve y retorna el primer elemento de la cola
-        notify(); // Notifica al productor que hay espacio
+        Boolean value = queue.poll(); // Removes and returns the first element in queue
         return value;
-        } 
+    }
+    
     }
 }
 
