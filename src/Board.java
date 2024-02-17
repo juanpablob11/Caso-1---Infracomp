@@ -62,7 +62,9 @@ public class Board {
        
                 String line = br.readLine();
                 if (line != null) {
+                    
                     int n = Integer.parseInt(line.trim()); 
+                    cells = new Cell[n][n];
                     int row = 0;
                     while ((line = br.readLine()) != null && row < n) {
                         String[] values = line.split(",");
