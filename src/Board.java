@@ -18,46 +18,32 @@ public class Board {
     // Attributes
     private Cell[][] cells;
     private final int size;
-    private final CyclicBarrier barrier;
+    private final CyclicBarrier barrierForMessages;
+    private final CyclicBarrier barrierForUpdating;
     private int currentGeneration;
 
     // Constructor Method
     public Board(int size) {
         this.size = size;
-        this.cells = new Cell[size][size];
-        // Initialize each cell and its mailbox here
-        this.barrier = new CyclicBarrier(size * size, new Runnable() {
+        this.barrierForMessages = new CyclicBarrier(size * size, new Runnable() {
             @Override
             public void run() {
-                // This action will be executed once all the cells reach the barrier
+                // This action will be executed once all the cells are with the state of all neighbors
+            }
+        });
+        this.barrierForUpdating = new CyclicBarrier(size * size, new Runnable() {
+            @Override
+            public void run() {
+                // This action will be executed once all the cells are updated
                 currentGeneration++;
                 printBoard();
             }
         });
         this.currentGeneration = 0;
     }
-  
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        
-        System.out.println("\n" +
-                        "Ingrese el número de generaciones a simular: ");
-        int generations = scanner.nextInt();
-        
-        scanner.nextLine(); // Consume the remaining line
-        
-        System.out.println("Ingrese el archivo con el estado inicial: ");
-        String initialStateFile = scanner.nextLine();
-        
-        Cell[][] cells = initializeCells(initialStateFile);
-        
-        // More logic to come
-        
-        scanner.close();
-    }
 
-    private static Cell[][] initializeCells(String initialStateFile) {
-        Cell[][] cells = null;
+    public Cell[][] initializeCells(String initialStateFile) {
+        Cell[][] cells = new Cell[this.size][this.size];
             try (BufferedReader br = new BufferedReader(new FileReader(initialStateFile))) {
        
                 String line = br.readLine();
@@ -67,7 +53,7 @@ public class Board {
                     while ((line = br.readLine()) != null && row < n) {
                         String[] values = line.split(",");
                         for (int j = 0; j < Math.min(values.length, n); j++) {
-                            cells[row][j] = new Cell("true".equals(values[j].trim()), row);
+                            cells[row][j] = new Cell("true".equals(values[j].trim()), row, j);
                         }
                         row++;
                     }
@@ -93,5 +79,13 @@ public class Board {
 
     private void updateGeneration() {
         // Optional implementation if you need to perform specific actions on each generation
+    }
+
+    public void setBoardCell(Cell[][] boardCells){
+        this.cells = boardCells;
+    }
+
+    public Cell[][] getBoardCell(){
+        return cells;
     }
 }

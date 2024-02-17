@@ -20,46 +20,29 @@ public class GameOfLife {
         }
         
         System.out.println("\n" +
-                        "Enter the number of generations to simulate: ");
+        "Enter the number of generations to simulate: ");
         int generations = scanner.nextInt();
         
+        System.out.println("\n" +
+        "Enter the size of matrix to simulate: ");
+        int size = scanner.nextInt();
+
         scanner.nextLine(); // Consume the remaining line
         
-        System.out.println("Enter the name of the file with the initial state: ");
+        System.out.println("\n" +
+        "Enter the name of the file with the initial state: ");
         String fileName = scanner.nextLine();
         
-        Boolean[][] board = loadInitialState(fileName);
+        Cell[][] board = loadInitialState(fileName, size);
         
         // More logic to come
         
         scanner.close();
     }
     
-    private static Boolean[][] loadInitialState(String fileName) {
-        Boolean[][] board = null;
-        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
-            // Read the first line to determine the size of the board
-            String line = br.readLine();
-            if (line != null) {
-                int n = Integer.parseInt(line.trim()); 
-                board = new Boolean[n][n]; // Initialize the board with size n x n
-                
-                // Read cell status
-                int row = 0;
-                while ((line = br.readLine()) != null && row < n) {
-                    String[] values = line.split(",");
-                    for (int j = 0; j < Math.min(values.length, n); j++) {
-                        board[row][j] = "true".equals(values[j].trim());
-                    }
-                    row++;
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
-        } catch (NumberFormatException e) {
-            System.err.println("Invalid number format in the first line of the file: " + e.getMessage());
-        }
-        
-        return board;
+    private static Cell[][] loadInitialState(String fileName, int size) {
+        Board gameBoard = new Board(size);
+        gameBoard.setBoardCell(gameBoard.initializeCells(fileName));
+        return gameBoard.getBoardCell();
     }    
 }
