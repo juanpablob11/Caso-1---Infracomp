@@ -44,12 +44,14 @@ public class Cell implements Runnable {
         try {
             // Phase 1: Send status to neighbors and Receive states
             this.actualBoard.updateNeighborBuffers(row, column, currentState);
-            this.mailbox.consume();
             barrierForMessages.await(); // Wait until all cells have sent their status
             
             // Phase 2: Calculate the new state
             calculateNextState();
             barrierForUpdating.await(); //Wait until all cells have been updated
+
+            barrierForMessages.reset();
+            barrierForUpdating.reset();
 
         } catch (InterruptedException | BrokenBarrierException e) {
             Thread.currentThread().interrupt();

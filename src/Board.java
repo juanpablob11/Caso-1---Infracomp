@@ -103,6 +103,7 @@ public class Board {
                 cellThreads[i][j].start();
             }
         }
+
     }
 
     public void updateNeighborBuffers(int row, int col, Boolean currentState){
