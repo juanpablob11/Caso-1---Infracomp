@@ -86,16 +86,22 @@ public class Cell implements Runnable {
         notify(); // Notifica al consumidor que hay datos
     }
 
-    public synchronized Boolean consume() throws InterruptedException {
+    public Boolean consume() throws InterruptedException {
         while (queue.isEmpty()) {
             Thread.yield(); // Instead of wait(), for semi-active wait
         }
-        Boolean value = queue.poll(); // Removes and returns the first element in queue
+        return consumeSynchronized(queue);
+    }
+    
+    }
+
+    public synchronized Boolean consumeSynchronized(Queue<Boolean> queue) throws InterruptedException {
+        // Removes and returns the first element in queue
+        Boolean value = queue.poll(); 
         neighborsState.add(value);
         notify(); // Notify producers that there is space
         return value;
     }
     
-    }
 }
 
