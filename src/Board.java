@@ -33,6 +33,8 @@ public class Board {
             @Override
             public void run() {
                 // This action will be executed once all the cells are with the state of all neighbors
+                System.out.println("barrera alcanzada");
+                System.out.println("xd");
             }
         });
         this.barrierForUpdating = new CyclicBarrier(size * size, new Runnable() {
@@ -58,30 +60,12 @@ public class Board {
                 while ((line = br.readLine()) != null && row < n) {
                     String[] values = line.split(",");
                     for (int j = 0; j < Math.min(values.length, n); j++) {
-                        cells[row][j] = new Cell("true".equals(values[j].trim()), row, j, barrierForMessages, barrierForUpdating);
+                        cells[row][j] = new Cell("true".equals(values[j].trim()), row, j, barrierForMessages, barrierForUpdating, this);
                     }
                     row++;
                 }
             }
     
-            // After creating all the cells, assign the neighbors
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < size; col++) {
-                    List<Cell> neighbors = new ArrayList<>();
-                    // Iterate through neighboring cells
-                    for (int i = -1; i <= 1; i++) {
-                        for (int j = -1; j <= 1; j++) {
-                            int newRow = row + i;
-                            int newCol = col + j;
-                            // Verify that it is not the current cell and that it is within the limits
-                            if ((i != 0 || j != 0) && newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
-                                neighbors.add(cells[newRow][newCol]);
-                            }
-                        }
-                    }
-                    cells[row][col].setNeighbors(neighbors);
-                }
-            }
         } catch (IOException e) {
             System.err.println("Error reading file: " + e.getMessage());
         } catch (NumberFormatException e) {
@@ -117,6 +101,27 @@ public class Board {
             for (int j = 0; j < cells[i].length; j++) {
                 cellThreads[i][j] = new Thread(cells[i][j]);
                 cellThreads[i][j].start();
+            }
+        }
+    }
+
+    public void updateNeighborBuffers(int row, int col, Boolean currentState){
+        // Assign the state to neighbors mailbox
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                int newRow = row + i;
+                int newCol = col + j;
+                // Verify that it is not the current cell and that it is within the limits
+                if ((i != 0 || j != 0) && newRow >= 0 && newRow < this.size && newCol >= 0 && newCol < size) {
+                    
+                    // Trying to produce to other mailboxes of neighbors
+                    try {
+                        cells[newRow][newCol].mailbox.produce(currentState);
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
             }
         }
     }

@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -13,32 +14,25 @@ public class Cell implements Runnable {
     It communicates its status to neighboring cells and receives their status to
     determine your next state.*/
 
-    public List<Cell> getNeighbors() {
-        return neighbors;
-    }
-
-    public void setNeighbors(List<Cell> neighbors) {
-        this.neighbors = neighbors;
-    }
-
     // Attributes
+    private Board actualBoard;
     private Boolean currentState;
-    private Integer column, row;
-    private Buffer mailbox;
-    private List<Cell> neighbors;
-    private List<Boolean> neighborsState;
+    private Integer row, column;
+    Buffer mailbox;
+    private List<Boolean> neighborsState = new ArrayList<Boolean>();
     private CyclicBarrier barrierForMessages;
     private CyclicBarrier barrierForUpdating;
     
     // Constructor
-    public Cell(boolean initialState, Integer column, Integer row, CyclicBarrier barrierForMessages,
-    CyclicBarrier barrierForUpdating) {
+    public Cell(boolean initialState, Integer row, Integer column, CyclicBarrier barrierForMessages,
+    CyclicBarrier barrierForUpdating, Board actualBoard) {
         this.currentState = initialState;
         this.mailbox = new Buffer(row + 1);
         this.column = column;
         this.row = row;
         this.barrierForMessages = barrierForMessages;
         this.barrierForUpdating = barrierForUpdating;
+        this.actualBoard = actualBoard;
     }
 
     @Override
@@ -48,43 +42,18 @@ public class Cell implements Runnable {
         // and updating its state accordingly
 
         try {
-            // Phase 1: Send status to neighbors
-            sendStateToNeighbors();
+            // Phase 1: Send status to neighbors and Receive states
+            this.actualBoard.updateNeighborBuffers(row, column, currentState);
+            this.mailbox.consume();
             barrierForMessages.await(); // Wait until all cells have sent their status
             
-            // Phase 2: Receive states and calculate the new state
-            receiveStateFromNeighbors();
+            // Phase 2: Calculate the new state
             calculateNextState();
             barrierForUpdating.await(); //Wait until all cells have been updated
 
         } catch (InterruptedException | BrokenBarrierException e) {
             Thread.currentThread().interrupt();
             e.printStackTrace();
-        }
-    }
-    
-    public void sendStateToNeighbors() {
-        // Implementation to send this cell's state to neighboring cells
-       for (Cell neighbor : neighbors){
-        // Try to produce the state of this cell to neighbor's mailbox
-        try {
-            neighbor.mailbox.produce(this.getCurrentState());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-       }
-    }
-    
-    public void receiveStateFromNeighbors() {
-        // Implementation to receive states from neighboring cells and update the mailbox
-        for(Cell neighbor : neighbors){
-        // Try to consume the state of the neighbors cells to update state
-        try {
-            boolean state = neighbor.mailbox.consume();
-            neighborsState.add(state);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         }
     }
 
@@ -101,7 +70,7 @@ public class Cell implements Runnable {
         this.currentState = currentState;
     }
 
-    private class Buffer {
+    class Buffer {
     private Queue<Boolean> queue = new LinkedList<>();
     private int capacity;
 
@@ -122,6 +91,8 @@ public class Cell implements Runnable {
             Thread.yield(); // Instead of wait(), for semi-active wait
         }
         Boolean value = queue.poll(); // Removes and returns the first element in queue
+        neighborsState.add(value);
+        notify(); // Notify producers that there is space
         return value;
     }
     

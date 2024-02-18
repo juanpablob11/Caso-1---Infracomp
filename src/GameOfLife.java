@@ -39,13 +39,7 @@ public class GameOfLife {
         
         scanner.close();
 
-        for(int i = 0; i < 30; i++) {
-            System.out.print("-");
-        }
-
-        System.out.println("\n" +
-            "The initial board is: ");
-
+        System.out.println();
         for(int i = 0; i < 30; i++) {
             System.out.print("-");
         }
