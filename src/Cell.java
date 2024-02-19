@@ -7,6 +7,13 @@ import java.util.concurrent.CyclicBarrier;
 
 public class Cell implements Runnable {
 
+    /* Contains an internal mailbox for communication, whose capacity is
+    determined based on your row. Runs a thread that simulates its cycle
+    of life according to the rules of the game (born, live, die), based on
+    the information received through your mailbox.
+    It communicates its status to neighboring cells and receives their status to
+    determine your next state.*/
+
     // Attributes
     private Board actualBoard;
     private Boolean currentState;
@@ -30,6 +37,11 @@ public class Cell implements Runnable {
 
     @Override
     public void run() {
+
+        // Simulate the cell's life cycle based on the game rules (birth, live, die)
+        // This will involve receiving state information from neighboring cells through the mailbox
+        // and updating its state accordingly
+
         try {
             // Phase 1: Send status to neighbors and Receive states
             this.actualBoard.updateNeighborBuffers(row, column, currentState);
