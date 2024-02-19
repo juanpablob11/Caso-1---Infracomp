@@ -37,7 +37,7 @@ public class Board {
                 System.out.println("xd");
             }
         });
-        this.barrierForUpdating = new CyclicBarrier(size * size, new Runnable() {
+        this.barrierForUpdating = new CyclicBarrier(size * size + 1, new Runnable() {
             @Override
             public void run() {
                 // This action will be executed once all the cells are updated
@@ -94,7 +94,7 @@ public class Board {
 
     private void updateGeneration() {
         // Optional implementation if you need to perform specific actions on each generation
-
+        System.out.println("start");
         // Create and start the threads for each Cell for this generation
         Thread[][] cellThreads = new Thread[size][size];
         for (int i = 0; i < cells.length; i++) {
@@ -103,6 +103,16 @@ public class Board {
                 cellThreads[i][j].start();
             }
         }
+        try {
+            barrierForUpdating.await();
+            System.out.println("done");
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } //Wait until all cells have been updated
     }
 
     public void updateNeighborBuffers(int row, int col, Boolean currentState){

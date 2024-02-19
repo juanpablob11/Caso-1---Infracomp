@@ -45,6 +45,7 @@ public class Cell implements Runnable {
             // Phase 1: Send status to neighbors and Receive states
             this.actualBoard.updateNeighborBuffers(row, column, currentState);
             this.mailbox.consume();
+            System.out.println("barrier reached");
             barrierForMessages.await(); // Wait until all cells have sent their status
             
             // Phase 2: Calculate the new state
@@ -80,6 +81,7 @@ public class Cell implements Runnable {
 
     public synchronized void produce(Boolean value) throws InterruptedException {
         while (queue.size() == capacity) {
+            this.consume();
             wait(); // Espera si el buffer está lleno
         }
         queue.add(value);
@@ -87,20 +89,31 @@ public class Cell implements Runnable {
     }
 
     public Boolean consume() throws InterruptedException {
-        while (queue.isEmpty()) {
+        Boolean value = consumeSynchronized();
+        while (value == null) {
             Thread.yield(); // Instead of wait(), for semi-active wait
+            value = consumeSynchronized();
         }
-        return consumeSynchronized(queue);
+
+        return value;
     }
     
+    public synchronized Boolean consumeSynchronized() throws InterruptedException {
+        Boolean value;
+        if (queue.isEmpty()){
+            notifyAll();
+            return null;
+        }
+        else{
+            // Removes and returns the first element in queue
+            value = queue.poll(); 
+            neighborsState.add(value);
+            notifyAll(); // Notify producers that there is space
+
+            return value;
+        }
     }
 
-    public synchronized Boolean consumeSynchronized(Queue<Boolean> queue) throws InterruptedException {
-        // Removes and returns the first element in queue
-        Boolean value = queue.poll(); 
-        neighborsState.add(value);
-        notify(); // Notify producers that there is space
-        return value;
     }
     
 }
