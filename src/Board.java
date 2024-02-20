@@ -29,20 +29,16 @@ public class Board {
     // Constructor Method
     public Board(int size, int numOfGenerations) {
         this.size = size;
-        this.barrierForMessages = new CyclicBarrier(size * size, new Runnable() {
+        this.barrierForMessages = new CyclicBarrier(size * size * 2, new Runnable() {
             @Override
             public void run() {
-                // This action will be executed once all the cells are with the state of all neighbors
-                System.out.println("barrera alcanzada");
-                System.out.println("xd");
+                // pass
             }
         });
         this.barrierForUpdating = new CyclicBarrier(size * size + 1, new Runnable() {
             @Override
             public void run() {
-                // This action will be executed once all the cells are updated
-                currentGeneration++;
-                printBoard();
+                // pass
             }
         });
         this.currentGeneration = 0;
@@ -79,14 +75,37 @@ public class Board {
     
 
     public void runSimulation(int numberOfGenerations) {
+        System.out.println();
+        System.out.println("Running turn 0 ");
+        System.out.println();
+        printBoard();
+        System.out.println();
 
         // update each generation for every turn
-        while (currentGeneration < numberOfGenerations){
-            updateGeneration();
+        while (currentGeneration < numberOfGenerations+1){
             currentGeneration ++;
+            updateGeneration();
+            for(int i = 0; i < 30; i++) {
+                System.out.print("-");
+            }
+            System.out.println("\n" +
+                            "Running turn " + currentGeneration);
+            System.out.println();
+            printBoard();
+            resetStates();
+            System.out.println();
         }
     }
 
+    public void resetStates() {
+        for(int i = 0; i < size; i++){
+            for(int j = 0; j < size; j++){
+                cells[i][j].getMailbox().getQueue().clear();
+                cells[i][j].neighborsState.clear();
+                cells[i][j].getNeighbors().clear();
+            }
+        }
+    }
 
     public void printBoard() {
         // Implementation to print the current status of the board
@@ -100,8 +119,6 @@ public class Board {
     }
 
     private void updateGeneration() {
-        // Optional implementation if you need to perform specific actions on each generation
-        System.out.println("start");
         // Create and start the threads for each Cell for this generation
         Thread[][] cellThreads = new Thread[size][size];
         for (int i = 0; i < cells.length; i++) {
@@ -112,7 +129,6 @@ public class Board {
         }
         try {
             barrierForUpdating.await();
-            System.out.println("done");
         } catch (InterruptedException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -122,7 +138,7 @@ public class Board {
         } //Wait until all cells have been updated
     }
 
-    public void updateNeighborBuffers(int row, int col, Boolean currentState){
+    public void updateNeighborBuffers(int row, int col, Cell currentNeighbor){
         // Assign the state to neighbors mailbox
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
@@ -131,13 +147,8 @@ public class Board {
                 // Verify that it is not the current cell and that it is within the limits
                 if ((i != 0 || j != 0) && newRow >= 0 && newRow < this.size && newCol >= 0 && newCol < size) {
                     
-                    // Trying to produce to other mailboxes of neighbors
-                    try {
-                        cells[newRow][newCol].mailbox.produce(currentState);
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
+                    // Trying to get neighbors to other neighbors
+                    currentNeighbor.addNeighbor(cells[newRow][newCol]);
                 }
             }
         }

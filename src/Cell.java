@@ -19,20 +19,29 @@ public class Cell implements Runnable {
     private Boolean currentState;
     private Integer row, column;
     Buffer mailbox;
-    private List<Boolean> neighborsState = new ArrayList<Boolean>();
-    private CyclicBarrier barrierForMessages;
-    private CyclicBarrier barrierForUpdating;
+    List<Boolean> neighborsState = new ArrayList<Boolean>();
+    private List<Cell> neighbors = new ArrayList<Cell>();
+    private CyclicBarrier barrierBeforeUpdating;
+    private CyclicBarrier barrierAfterUpdating;
     
     // Constructor
     public Cell(boolean initialState, Integer row, Integer column, CyclicBarrier barrierForMessages,
     CyclicBarrier barrierForUpdating, Board actualBoard) {
         this.currentState = initialState;
-        this.mailbox = new Buffer(row + 1);
+        this.mailbox = new Buffer(row + 1, row, column);
         this.column = column;
         this.row = row;
-        this.barrierForMessages = barrierForMessages;
-        this.barrierForUpdating = barrierForUpdating;
+        this.barrierBeforeUpdating = barrierForMessages;
+        this.barrierAfterUpdating = barrierForUpdating;
         this.actualBoard = actualBoard;
+    }
+
+    public Integer getRow() {
+        return row;
+    }
+
+    public Integer getColumn() {
+        return column;
     }
 
     @Override
@@ -43,20 +52,38 @@ public class Cell implements Runnable {
         // and updating its state accordingly
 
         try {
-            // Phase 1: Send status to neighbors and Receive states
-            this.actualBoard.updateNeighborBuffers(row, column, currentState);
-            this.mailbox.consume();
-            System.out.println("barrier reached");
-            barrierForMessages.await(); // Wait until all cells have sent their status
-            
-            // Phase 2: Calculate the new state
-            calculateNextState();
-            barrierForUpdating.await(); //Wait until all cells have been updated
+
+            // Phase 0: Create threads for producing and consuming
+                // Getting the neighbors
+                this.actualBoard.updateNeighborBuffers(row, column, this);
+                // Creating producer with instance of buffer for cell
+                Producer producerThread = new Producer(this, barrierBeforeUpdating);
+                
+                // Creating consumer with instance of buffer for cell
+                Consumer consumerThread = new Consumer(this, barrierBeforeUpdating);
+
+                // Running auxThreads
+                producerThread.start();
+                consumerThread.start();
+
+                // Wait for the producer and consumer threads to finish
+                producerThread.join();
+                consumerThread.join();
+
+            // Phase 1: Calculate the new state
+                calculateNextState();
+
+            // Phase 3: Wait for all cells
+                barrierAfterUpdating.await(); 
 
         } catch (InterruptedException | BrokenBarrierException e) {
             Thread.currentThread().interrupt();
             e.printStackTrace();
         }
+    }
+
+    public Buffer getMailbox() {
+        return mailbox;
     }
 
     public void calculateNextState() {
@@ -87,36 +114,13 @@ public class Cell implements Runnable {
         this.currentState = currentState;
     }
 
-    class Buffer {
-        private Queue<Boolean> queue = new LinkedList<>();
-        private int capacity;
-
-        public Buffer(int capacity) {
-            this.capacity = capacity;
-        }
-
-        public synchronized void produce(Boolean value) throws InterruptedException {
-            while (queue.size() == capacity) {
-                wait(); // Espera si el buffer está lleno
-            }
-            queue.add(value);
-            notify(); // Notifica al consumidor que hay datos
-        }
-
-        public Boolean consume() throws InterruptedException {
-            while (queue.isEmpty()) {
-                Thread.yield(); // Instead of wait(), for semi-active wait
-            }
-            return consumeSynchronized(queue);
-        }
+    public void addNeighbor(Cell currentNeighbor) {
+        neighbors.add(currentNeighbor);
     }
 
-    public synchronized Boolean consumeSynchronized(Queue<Boolean> queue) throws InterruptedException {
-        // Removes and returns the first element in queue
-        Boolean value = queue.poll(); 
-        neighborsState.add(value);
-        notify(); // Notify producers that there is space
-        return value;
+    public List<Cell> getNeighbors() {
+        return neighbors;
     }
+
 }
 
